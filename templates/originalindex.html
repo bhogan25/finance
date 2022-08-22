@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Index
+{% endblock %}
+
+{% block main %}
+  <div>
+    <h3></h3>
+    <h3>Net Account Value: {{ net_value }}</h3>
+    <h3>Cash: {{ cash }}</h3>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <!-- {Symbol: , Total_Shares: , Price: , Market_Value: , Total_Cost: , Avg_Position: } -->
+        <th scope="col">Symbol</th>
+        <th scope="col">Shares Owned</th>
+        <!-- <th scope="col">Avg Position</th> -->
+        <th scope="col">Current Price</th>
+        <!-- <th scope="col">Total Cost (then)</th> -->
+        <th scope="col">Total Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for column in stocksOwnedByUserList %}
+      <tr>
+          <td>{{ column.Symbol }}</td>
+          <td>{{ column.Total_Shares }}</td>
+          <!-- <td>{{ column.Avg_Position }}</td> -->
+          <td>{{ column.Price }}</td>
+          <!-- <td>{{ column.Total_Cost }}</td> -->
+          <td>{{ column.Market_Value }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+    {% block div %}{% endblock %}
+
+{% endblock %}

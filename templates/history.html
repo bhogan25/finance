@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    History
+{% endblock %}
+
+{% block main %}
+  <table class="table">
+    <thead>
+      <tr>
+        <!-- {Symbol: , Total_Shares: , Price: , Market_Value: , Total_Cost: , Avg_Position: } -->
+        <th scope="col">Transaction</th>
+        <th scope="col">Symbol</th>
+        <th scope="col">Price</th>
+        <th scope="col">Shares</th>
+        <th scope="col">Date</th>
+        <th scope="col">Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for column in history %}
+      <tr>
+          <td>{{ column.transaction_type }}</td>
+          <td>{{ column.symbol }}</td>
+          <td>{{ column.price }}</td>
+          <td>{{ column.shares }}</td>
+          <td>{{ column.date }}</td>
+          <td>{{ column.time }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+    {% block div %}{% endblock %}
+
+{% endblock %}

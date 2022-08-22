@@ -1,0 +1,8 @@
+{% extends "buy.html" %}
+
+{% block div %}
+    <div>
+        <h2>You bought {{ shares }} shares of {{ name }} for {{ pps }} ({{ cost }} in total).</h2>
+        <h5>Your remaining account balance is {{ balance }}</h5>
+    </div>
+{% endblock %}
