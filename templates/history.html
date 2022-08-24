@@ -13,8 +13,7 @@
         <th scope="col">Symbol</th>
         <th scope="col">Price</th>
         <th scope="col">Shares</th>
-        <th scope="col">Date</th>
-        <th scope="col">Time</th>
+        <th scope="col">Timestamp</th>
       </tr>
     </thead>
     <tbody>
@@ -24,8 +23,7 @@
           <td>{{ column.symbol }}</td>
           <td>{{ column.price }}</td>
           <td>{{ column.shares }}</td>
-          <td>{{ column.date }}</td>
-          <td>{{ column.time }}</td>
+          <td>{{ column.datetime }}</td>
       </tr>
       {% endfor %}
     </tbody>

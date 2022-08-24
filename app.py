@@ -1,4 +1,5 @@
 import os
+
 import datetime
 
 from cs50 import SQL
@@ -23,8 +24,12 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
-# Configure CS50 Library to use SQLite database
+# Configure CS50 Library to use PostgreSQL database
 db = SQL("sqlite:///finance.db")
+# uri = os.getenv("DATABASE_URL")
+# if uri.startswith("postgres://"):
+#     uri = uri.replace("postgres://", "postgresql://")
+# db = SQL("postgres://zekjpczysdaabz:9d719487a8260d0f21b6dbfe13e6944e57a839261a744821b82fefc30345aa98@ec2-34-203-182-65.compute-1.amazonaws.com:5432/ddqdd4rcv163tf")
 
 # Make sure API key is set
 if not os.environ.get("API_KEY"):
@@ -47,7 +52,7 @@ def index():
 
     # Construct list of dictoinaries containing stock information {Symbol: , Total Shares: , Price: , Market Value: , Total Cost: , Avg Position: }
     stocksOwnedByUserList = db.execute(
-        "SELECT DISTINCT symbol AS 'Symbol', SUM(shares) AS 'Total_Shares' FROM purchases WHERE users_id = ? GROUP BY Symbol", session['user_id'])
+        "SELECT DISTINCT symbol AS 'Symbol', SUM(shares) AS 'Total_Shares' FROM purchases_1 WHERE users_id = ? GROUP BY Symbol", session['user_id'])
     net_value = 0.00
 
     if stocksPresent(stocksOwnedByUserList):
@@ -59,7 +64,7 @@ def index():
             stock['Market_Value'] = "{0:.2f}".format(market_value)  # edit made here
 
             cost = 0
-            positionList = db.execute("SELECT shares, pps FROM purchases WHERE users_id = ? AND symbol = ?",
+            positionList = db.execute("SELECT shares, pps FROM purchases_1 WHERE users_id = ? AND symbol = ?",
                                       session['user_id'], stock['Symbol'])
             for position in positionList:
                 cost += position['shares'] * position['pps']
@@ -69,11 +74,11 @@ def index():
         # Display total cash value and net account value
         extractCash = db.execute("SELECT id, cash FROM users WHERE id = ?", session['user_id'])
         cash = float("{0:.2f}".format(extractCash[0]['cash']))
-        net_value = net_value + cash
+        net_value = usd(net_value + cash)
         cash = usd(cash)
         return render_template("originalindex.html", stocksOwnedByUserList=stocksOwnedByUserList, cash=cash, net_value=net_value)
     else:
-        # If no purchases are found Display total cash value and net account value
+        # If no purchases_1 table are found Display total cash value and net account value
         extractCash = db.execute("SELECT id, cash FROM users WHERE id = ?", session['user_id'])
         cash = float("{0:.2f}".format(extractCash[0]['cash']))
         return render_template("originalindex.html", cash=cash, net_value=net_value)
@@ -106,12 +111,12 @@ def buy():
         if (cost > cash):
             return apology("You do not have enough cash to make this purchase", 400)
 
-        # Record purchase in "purchases" and "history" tables
+        # Record purchase in purchases_1 table and history_1 table
         current_time = datetime.datetime.now()
-        db.execute("INSERT INTO purchases (users_id, symbol, pps, shares, month, day, year) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                   session['user_id'], stock['symbol'], stock['price'], shares, current_time.month, current_time.day, current_time.year)
-        db.execute("INSERT INTO history (user_id, transaction_type, symbol, price, shares) VALUES (?, ?, ?, ?, ?)",
-                   session['user_id'], "Buy",  stock['symbol'], stock['price'], shares)
+        db.execute("INSERT INTO purchases_1 (users_id, symbol, pps, shares, datetime) VALUES (?, ?, ?, ?, ?)",
+                   session['user_id'], stock['symbol'], stock['price'], shares, current_time)
+        db.execute("INSERT INTO history_1 (user_id, transaction_type, symbol, price, shares, datetime) VALUES (?, ?, ?, ?, ?, ?)",
+                   session['user_id'], "Buy",  stock['symbol'], stock['price'], shares, current_time)
 
         # Update users cash balance in "users" db table
         db.execute("UPDATE users SET cash = ? WHERE id = ?", round(cash-cost, 2), session['user_id'])
@@ -134,7 +139,7 @@ def buy():
 def history():
     """Show history of transactions"""
     history = db.execute(
-        "SELECT transaction_type, symbol, price, shares, date, time FROM history WHERE user_id = ?", session["user_id"])
+        "SELECT transaction_type, symbol, price, shares, datetime FROM history_1 WHERE user_id = ?", session["user_id"])
     for column in history:
         column['price'] = usd(column['price'])
 
@@ -253,10 +258,10 @@ def sell():
 
     if request.method == "POST":
 
-        # Grab data from purchases.finance.db
+        # Grab data from purchases_1 table
         id = int(request.form.get("id"))
         positions = db.execute(
-            "SELECT id, users_id, symbol, shares, pps, month, day, year, time FROM purchases WHERE users_id = ?", session['user_id'])
+            "SELECT id, users_id, symbol, shares, pps, datetime FROM purchases_1 WHERE users_id = ?", session['user_id'])
         for position in positions:
             if int(position['id']) == id:
 
@@ -287,21 +292,21 @@ def sell():
 
                 new_total_shares = shares_current - shares_sell
 
-                if new_total_shares > 0:
-                    # SELL STOCK - UPDATE new share total at requested price in purchases.finance.db
-                    db.execute("UPDATE purchases SET shares = ? WHERE id = ?", new_total_shares, int(position['id']))
-                    db.execute("INSERT INTO history (user_id, transaction_type, symbol, price, shares) VALUES (?, ?, ?, ?, ?)",
-                               sesh, 'Sell', symbol, pps, shares_sell)
+                # Record transaction in history_1 table
+                current_time = datetime.datetime.now()
+                db.execute("INSERT INTO history_1 (user_id, transaction_type, symbol, price, shares, datetime) VALUES (?, ?, ?, ?, ?, ?)",
+                               sesh, 'Sell', symbol, pps, shares_sell, current_time)
 
+                if new_total_shares > 0:
+                    # SELL STOCK - UPDATE new share total at requested price in purchases_1 table
+                    db.execute("UPDATE purchases_1 SET shares = ? WHERE id = ?", new_total_shares, int(position['id']))
                 elif new_total_shares == 0:
-                    # SELL STOCK - DELETE position row in purchases.finance.db
-                    db.execute("DELETE FROM purchases WHERE id = ?", int(position['id']))
-                    db.execute("INSERT INTO history (user_id, transaction_type, symbol, price, shares) VALUES (?, ?, ?, ?, ?)",
-                               sesh, 'Sell', symbol, pps, shares_sell)
+                    # SELL STOCK - DELETE position row in purchases_1 table
+                    db.execute("DELETE FROM purchases_1 WHERE id = ?", int(position['id']))
                 else:
                     return apology("Cannot sell more shares (or 0 shares) then owned of a perticular position", 400)
 
-                # Update cash balance in users.finance.db
+                # Update cash balance in users table
                 extractCash = db.execute("SELECT id, cash FROM users WHERE id = ?", session['user_id'])
                 cash = extractCash[0]['cash'] + round(shares_sell * pps, 2)
 
@@ -312,7 +317,7 @@ def sell():
     else:
         # Construct list of dictoinaries containing stock information {Symbol: , Company: , Total Shares: , Price: , Market Value: , Total Cost: , Avg Position: }
         stocksOwnedByUserList = db.execute(
-            "SELECT DISTINCT symbol AS 'Symbol', SUM(shares) AS 'Total_Shares' FROM purchases WHERE users_id = ? GROUP BY Symbol", session['user_id'])
+            "SELECT DISTINCT symbol AS 'Symbol', SUM(shares) AS 'Total_Shares' FROM purchases_1 WHERE users_id = ? GROUP BY Symbol", session['user_id'])
         net_value = 0
         sesh = session['user_id']
 
@@ -327,7 +332,7 @@ def sell():
 
                 cost = 0
                 positionList = db.execute(
-                    "SELECT symbol, shares, pps, month, day, year, time FROM purchases WHERE users_id = ? AND symbol = ?", session['user_id'], stock['Symbol'])
+                    "SELECT symbol, shares, pps, datetime FROM purchases_1 WHERE users_id = ? AND symbol = ?", session['user_id'], stock['Symbol'])
 
                 for position in positionList:
                     cost += position['shares'] * position['pps']
@@ -341,7 +346,7 @@ def sell():
             cash = usd(cash)
 
             positions = db.execute(
-                "SELECT id, users_id, symbol, shares, pps, month, day, year, time FROM purchases WHERE users_id = ?", session['user_id'])
+                "SELECT id, users_id, symbol, shares, pps, datetime FROM purchases_1 WHERE users_id = ?", session['user_id'])
             for position in positions:
                 position['pps'] = usd(position['pps'])
 

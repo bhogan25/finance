@@ -25,7 +25,7 @@
                   <tr>
                     <th scope="col">Shares</th>
                     <th scope="col">Fill Price</th>
-                    <th scope="col">Fill Date</th>
+                    <th scope="col">Fill Timestamp</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -37,7 +37,7 @@
                         <td>{{ position.shares }}</td>
                           <td>{{ position.pps }}/share</td>
                           <td>
-                            <p>{{ position.month }}/{{ position.day }}/{{ position.year }} {{ position.time }}</p>
+                            <p>{{ position.datetime }}</p>
                           </td>
                           <td>
                             <form action="/sell" method="post">
